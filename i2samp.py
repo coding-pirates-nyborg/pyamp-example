@@ -1,14 +1,12 @@
 import os
 
 try:
-    from adafruit_python_shell import shell
+    from adafruit_shell import Shell
     from clint.textui import colored
 except ImportError:
     raise RuntimeError("The library 'adafruit-python-shell' was not found. To install, try typing: sudo pip3 install adafruit-python-shell")
 
-# Create shell instance for backwards compatibility
-Shell = shell_instance.Shell
-shell_instance = Shell()
+shell = Shell()
 
 BLACKLIST = "/etc/modprobe.d/raspi-blacklist.conf"
 PRODUCT_NAME = "I2S Amplifier"

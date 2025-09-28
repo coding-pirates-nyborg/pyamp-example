@@ -179,30 +179,104 @@ uv sync
 
 ### 6. Test Text-to-Speech
 
-Create a simple test script (`test_tts.py`):
+**Important Note**: Due to espeak's audio configuration issues with ALSA, we recommend using a custom TTS solution that pipes espeak through aplay for reliable audio output.
+
+Create a working TTS script (`working_tts.py`):
+
 ```python
-import pyttsx3
+#!/usr/bin/env python3
+"""
+Working TTS solution that pipes espeak through aplay to use the correct audio device.
+This bypasses espeak's audio configuration issues.
+"""
 
-# Initialize the TTS engine
-engine = pyttsx3.init()
+import subprocess
+import sys
+import os
 
-# List available voices (optional)
-voices = engine.getProperty('voices')
-print(f"Available voices: {len(voices)}")
+class WorkingTTS:
+    def __init__(self, rate=150, volume=80):
+        self.rate = rate
+        self.volume = volume
+        
+    def say(self, text):
+        """Speak text using espeak piped through aplay"""
+        try:
+            # Create espeak command
+            espeak_cmd = [
+                "espeak", 
+                text, 
+                "--stdout",
+                "-s", str(self.rate),  # speed
+                "-a", str(self.volume)  # amplitude (0-200)
+            ]
+            
+            # Create aplay command to use our configured default device
+            aplay_cmd = ["aplay", "-D", "default"]
+            
+            # Create the pipeline
+            espeak_process = subprocess.Popen(espeak_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            aplay_process = subprocess.Popen(aplay_cmd, stdin=espeak_process.stdout, stderr=subprocess.DEVNULL)
+            
+            # Wait for completion
+            espeak_process.stdout.close()
+            aplay_process.communicate()
+            
+        except Exception as e:
+            print(f"TTS Error: {e}")
+    
+    def set_rate(self, rate):
+        """Set speech rate (words per minute)"""
+        self.rate = rate
+        
+    def set_volume(self, volume):
+        """Set volume (0.0 to 1.0)"""
+        self.volume = int(volume * 100)
 
-# Configure voice and speech properties
-engine.setProperty('voice', voices[28].id)  # English (America)
-engine.setProperty('rate', 150)    # Words per minute
-engine.setProperty('volume', 0.8)  # Volume (0.0 to 1.0)
+def main():
+    # Test the working TTS
+    tts = WorkingTTS()
+    
+    print("Testing working TTS solution...")
+    tts.say("Hello! This is a working text to speech solution that uses your MAX98357A correctly!")
+    
+    print("Testing different rates...")
+    tts.set_rate(100)
+    tts.say("This is slow speech")
+    
+    tts.set_rate(200)
+    tts.say("This is fast speech")
+    
+    tts.set_rate(150)
+    tts.say("This is normal speed")
+    
+    print("TTS test complete!")
 
-# Speak some text
-engine.say("Hello! Your MAX98357A audio setup is working perfectly!")
-engine.runAndWait()
+if __name__ == "__main__":
+    main()
 ```
 
 Run the test:
 ```bash
-uv run python test_tts.py
+uv run python working_tts.py
+```
+
+**Usage Examples:**
+```python
+from working_tts import WorkingTTS
+
+# Basic usage
+tts = WorkingTTS()
+tts.say("Hello world!")
+
+# Customize speed and volume
+tts = WorkingTTS(rate=120, volume=90)
+tts.say("Custom speed and volume")
+
+# Change settings dynamically
+tts.set_rate(200)  # Fast speech
+tts.set_volume(0.5)  # Half volume
+tts.say("Modified settings")
 ```
 
 ## Troubleshooting
@@ -230,20 +304,33 @@ uv run python test_tts.py
 
 ### TTS Not Working
 
-1. **Verify espeak installation:**
+**Common Issue**: `espeak` (used by `pyttsx3`) may have ALSA configuration conflicts and not use your configured default audio device properly.
+
+1. **Test espeak directly (may show ALSA errors but no sound):**
    ```bash
    espeak "Hello test"
    ```
 
-2. **Test espeak with piping:**
+2. **Test espeak with piping (this should work):**
    ```bash
    espeak "Hello test" --stdout | aplay -D default
    ```
 
-3. **Check available voices:**
+3. **If pyttsx3 is silent, use the WorkingTTS class instead:**
+   - The `working_tts.py` solution bypasses espeak's audio routing issues
+   - It pipes espeak output through aplay which correctly uses your MAX98357A
+
+4. **Check available voices with espeak:**
    ```bash
-   uv run python -c "import pyttsx3; engine = pyttsx3.init(); voices = engine.getProperty('voices'); print(f'Available voices: {len(voices)}')"
+   espeak --voices
    ```
+
+5. **Environment variable approach (may not work reliably):**
+   ```bash
+   ALSA_CARD=1 espeak "Test with environment variable"
+   ```
+
+**Recommended Solution**: Use the `WorkingTTS` class provided in step 6, which reliably routes audio through your configured MAX98357A device.
 
 ### Audio Quality Issues
 

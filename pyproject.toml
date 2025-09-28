@@ -7,7 +7,14 @@ authors = [
     { name = "Frey Clante", email = "fclante@gmail.com" }
 ]
 requires-python = ">=3.9"
-dependencies = []
+dependencies = [
+    "adafruit-platformdetect>=3.83.1",
+    "adafruit-python-shell>=1.10.0",
+    "args>=0.1.0",
+    "clint>=0.5.1",
+    "gtts>=2.5.4",
+    "pyttsx3>=2.99",
+]
 
 [project.scripts]
 pyamp-example = "pyamp_example:main"
